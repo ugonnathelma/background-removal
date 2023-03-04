@@ -1,69 +1,67 @@
-import React, { ChangeEvent, useState } from 'react';
-import './App.css';
-import AddButton from './components/AddButton';
-import loadImage, { LoadImageResult } from 'blueimp-load-image';
-import { API_KEY, API_URL, BASE64_IMAGE_HEADER } from './Constants';
+import React, { ChangeEvent, useState } from "react";
+import "./App.css";
+import AddButton from "./components/AddButton";
+
+import { Link, BrowserRouter, Routes, Route } from "react-router-dom";
+import { uploadImageToServer } from "./utils";
+import { Home } from "./components/Home";
+import { UntitledFolder } from "./components/UntitledFolder";
+import { Folder } from "./components/Folder";
 
 function App() {
-  const [result, setResult] = useState<string | null>(null)
-  
-  let uploadImageToServer = (file: File) => {
-    loadImage(
-      file,
-      {
-        maxWidth: 400,
-        maxHeight: 400,
-        canvas: true
-      })
-      .then(async (imageData: LoadImageResult) => {
-        let image = imageData.image as HTMLCanvasElement
-        
-        let imageBase64 = image.toDataURL("image/png")
-        let imageBase64Data = imageBase64.replace(BASE64_IMAGE_HEADER, "")
-        let data = {
-          image_file_b64: imageBase64Data,
-        }
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'x-api-key': API_KEY
-          },
-          body: JSON.stringify(data)
-        });
+  const [result, setResult] = useState<string | null>(null);
+  const [folders, setFolder] = useState<string[]>(
+    JSON.parse(localStorage.getItem("folders") || "[]")
+  );
+  const [prevImages, setPrevImages] = useState<
+    { url: string; id: string | number }[]
+  >(JSON.parse(localStorage.getItem("prev-images") || "[]"));
 
-        if (response.status >= 400 && response.status < 600) {
-          throw new Error("Bad response from server");
-        }
+  const onAddPreviousImage = (url: string) => {
+    const prevImages = JSON.parse(localStorage.getItem("prev-images") || "[]");
+    localStorage.setItem(
+      "prev-images",
+      JSON.stringify([...prevImages, { id: prevImages.length, url }])
+    );
+    setPrevImages([...prevImages, url]);
+  };
 
-        const result = await response.json();
-        const base64Result = BASE64_IMAGE_HEADER + result.result_b64
-        setResult(base64Result)
-      })
-      
-      .catch(error => {
-        console.error(error)
-      })
-    }
-    
-    let onImageAdd = (e: ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-        uploadImageToServer(e.target.files[0])
-      } else {
-        console.error("No file was picked")
-      }
-    }
-    
-    return (
-      <div className="App">
-        <header className="App-header">
-          {!result && <AddButton onImageAdd={onImageAdd}/>}
-          {result && <img src={result} width={300} alt="result from the API"/>}
-        </header>
-      </div>
-      );
-    }
-    
-    export default App;
-    
+  const handleCreateFolder = () => {
+    const folderName = "Folder" + (folders.length + 1);
+    setFolder([...folders, folderName]);
+    localStorage.setItem("folders", JSON.stringify([...folders, folderName]));
+  };
+
+  return (
+    <div className="container">
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <Home
+                handleCreateFolder={handleCreateFolder}
+                setPrevImages={onAddPreviousImage}
+                setResult={setResult}
+                result={result}
+                folders={folders}
+              />
+            }
+          ></Route>
+          <Route
+            path="/untitled-folder"
+            element={<UntitledFolder prevImages={prevImages} />}
+          />
+          {folders.map((folder) => (
+            <Route
+              path={`/${folder}`}
+              element={<Folder prevImages={prevImages} folder={folder} />}
+            />
+          ))}
+        </Routes>
+      </BrowserRouter>
+    </div>
+  );
+}
+
+export default App;
