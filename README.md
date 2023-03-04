@@ -10,3 +10,4 @@ Start the app using the following command, replacing the key by your API key:
 - Use React Context for setting the image folder to a ensure a re-render, when a photo is moved to another folder
 - Write Tests for components
 - Tidy up Folder Structure
+- Improve and tidy up code
